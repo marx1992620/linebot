@@ -82,17 +82,17 @@ def callback():
 def handle_message(event):
     line_bot_api.reply_message(
         event.reply_token,
-        TextSendMessage(text='Message has Upload'+ ' ' + event.message.id))
+        TextSendMessage(text='Message has Upload'+ ' ' + event.message.text))
     # 請line bot api 跟line 用消息id拿文字回來
-    message_content = line_bot_api.get_message_content(event.message.id)
-    print(event.message.id)
-    print(message_content)
-    # dic = {}
-    # dic[event.message.id] = message_content
-    messageid = event.message.id.encode()
-    content = message_content.encode()
-    print(messageid,content)
-    produce(messageid,content)
+    user_data = line_bot_api.get_profile(event.source.user_id)
+    user_data = str(user_data)
+    pos = user_data.find("userId")
+
+    user_id = user_data[pos+10:-2].encode() # kafka只吃binary資料，建議encode()使文字轉binary
+    content=event.message.text.encode() # 如果使用confluent kafka便不需encode()轉binary
+    produce(user_id,content)
+    print(content)
+    print(user_id)
     # 存成檔案
     # with open('E:\line_chat_bot_tutorial-master\material/images/'+event.message.id+'.txt', 'w') as fd:
     #     for chunk in message_content.iter_content():
@@ -146,7 +146,7 @@ def handle_message(event):
 #             fd.write(chunk)
 
 # linebot資料丟kafka
-def produce(messageid,content):
+def produce(user_id,content):
     # 步驟1. 設定要連線到Kafka集群的相關設定
     props = {
         # Kafka集群位置
@@ -159,7 +159,7 @@ def produce(messageid,content):
     topicName = 'par12345'
     try:
         # produce(topic, [value], [key], [partition], [on_delivery], [timestamp], [headers])
-        producer.produce(topicName, key= messageid, value= content)
+        producer.produce(topicName, key= user_id, value= content)
         producer.flush()
         print('Send messages to Kafka')
 
@@ -175,4 +175,5 @@ def produce(messageid,content):
 '''
 if __name__ == "__main__":
     app.run(host='0.0.0.0')
+
 
